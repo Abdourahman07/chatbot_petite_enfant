@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#213943">
+<title>Assistant – Portrait interactif de la Petite Enfance</title>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;color:#23343d;background:#eef1f3}
+*{box-sizing:border-box}html{width:100%;height:100%}body{margin:0;padding:0;width:100%;min-height:100%}
+button,textarea{font:inherit}button{cursor:pointer}
+.shell{width:100%;max-width:470px;height:100vh;height:100dvh;max-height:850px;margin:auto;display:flex;flex-direction:column;background:white;overflow:hidden;box-shadow:0 8px 28px rgba(29,52,60,.13)}
+.head{background:#213943;color:#fff;display:flex;align-items:center;gap:12px;padding:14px 16px;flex-shrink:0}
+.drop{display:flex;align-items:center;justify-content:center;width:40px;height:40px;background:#f0e222;color:#23343d;border-radius:10px;font-size:21px;flex-shrink:0}
+.head-title{flex:1;min-width:0}.head strong{display:block;font-size:14px;line-height:1.4}.head small{display:block;margin-top:3px;font-size:11px;color:#cfe1e4}
+.reset{background:transparent;color:#e7eeee;border:1px solid #6c848b;padding:7px 10px;border-radius:7px;font-size:12px;flex-shrink:0}
+.messages{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:18px 15px;background:#f4f7f8;display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.msg{max-width:93%;padding:12px 13px;border-radius:13px;font-size:13px;line-height:1.58;white-space:pre-wrap;overflow-wrap:anywhere}
+.bot{align-self:flex-start;background:#fff;border:1px solid #dce5e9;border-top-left-radius:3px}.user{align-self:flex-end;background:#f0e222;color:#1e2c34;border-top-right-radius:3px}
+.quick{display:flex;flex-wrap:wrap;gap:7px;padding:10px 12px;border-top:1px solid #e8ecee;background:#fff;flex-shrink:0;max-height:108px;overflow-y:auto}
+.quick button{border:1px solid #cddce2;border-radius:17px;background:#fff;color:#244050;padding:8px 11px;font-size:11px;font-weight:500;white-space:nowrap}.quick button:hover{background:#f5f0c5;border-color:#e8d92a}
+.entry{display:flex;align-items:flex-end;gap:8px;padding:10px;border-top:1px solid #e4eaed;background:#fff;flex-shrink:0}
+.entry textarea{flex:1;min-width:0;resize:none;min-height:44px;max-height:110px;padding:12px;border:1px solid #ccd7da;border-radius:9px;font-size:14px;line-height:1.4;outline:none}.entry textarea:focus{border-color:#849da6}
+.entry button{border:none;background:#f0e222;color:#1b262b;border-radius:9px;min-height:44px;padding:0 14px;font-size:13px;font-weight:bold;flex-shrink:0}.entry button:hover{background:#e2d619}
+.disclaimer{flex-shrink:0;background:#fff;color:#657983;text-align:center;font-size:10px;padding:0 10px 8px}.disclaimer a{color:#244050}
+@media(min-width:601px){body{padding:8px}.shell{border-radius:13px;height:calc(100vh - 16px);height:calc(100dvh - 16px)}}
+@media(max-width:600px){html,body{width:100%;height:100%;overflow:hidden}.shell{width:100%;max-width:none;height:100vh;height:100dvh;max-height:none;min-height:0;margin:0;border-radius:0;box-shadow:none}.head{padding:12px 13px;gap:10px}.messages{padding:13px 11px;gap:10px}.msg{max-width:92%;font-size:13px;padding:10px 11px}.quick{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;max-height:none;padding:9px 10px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}.quick button{flex:0 0 auto}.entry{padding:9px 10px}}
+@media(max-width:390px){.head{padding:10px;gap:8px}.drop{width:34px;height:34px;font-size:18px}.head strong{font-size:12px}.head small{font-size:10px}.reset{padding:6px 8px;font-size:11px}.msg{font-size:12.5px}.entry textarea{font-size:16px}.entry button{padding:0 11px}}
+@media(max-height:480px){.head{padding-top:8px;padding-bottom:8px}.drop{width:32px;height:32px}.messages{padding:9px 11px}.quick{padding:6px 10px}.entry{padding:6px 10px}}
+@media(max-width:600px){.head{padding-top:max(12px,env(safe-area-inset-top))}.entry{padding-bottom:max(10px,env(safe-area-inset-bottom))}}
+button:focus-visible,textarea:focus-visible{outline:2px solid #213943;outline-offset:2px}
+</style>
+</head>
+<body>
+<main class="shell" aria-label="Assistant du Portrait de la Petite Enfance">
+<header class="head"><span class="drop" aria-hidden="true">🧸</span><div class="head-title"><strong>Assistant du Portrait de la Petite Enfance</strong><small>Aide à la navigation et à l’utilisation du portrait</small></div><button class="reset" id="reset" type="button">Effacer</button></header>
+<section id="messages" class="messages" role="log" aria-live="polite" aria-label="Conversation"></section>
+<nav id="quick" class="quick" aria-label="Questions rapides"></nav>
+<form class="entry" id="form"><textarea id="question" rows="1" maxlength="600" required aria-label="Posez votre question" placeholder="Posez votre question…"></textarea><button type="submit">Envoyer</button></form>
+<div class="disclaimer">Assistant de navigation · <a href="https://geoportailpetiteenfance-audrso.hub.arcgis.com/" target="_blank" rel="noopener noreferrer">Ouvrir le portrait petite enfance</a></div>
+</main>
+<script>
+'use strict';
+const FAQ=[
+  {
+    "title": "Présentation du portrait",
+    "keys": [
+      "bonjour",
+      "salut",
+      "aide",
+      "presentation",
+      "objectif",
+      "portrait",
+      "possible",
+      "utilisation",
+      "comment utiliser"
+    ],
+    "answer": "Bienvenue dans le Portrait interactif de la Petite Enfance de L’Agence du Pays de Saint-Omer ! Il rassemble des cartes et indicateurs sur l’offre de services et les besoins des familles. Je peux vous guider pour choisir une thématique, utiliser les filtres Intercommunalité, Commune et, selon l’onglet, RPE, afficher les couches, consulter les attributs ou comprendre un indicateur."
+  },
+  {
+    "title": "Utiliser les filtres",
+    "keys": [
+      "filtre",
+      "filtres",
+      "filtrer",
+      "filtrage",
+      "selection",
+      "selectionner",
+      "critere",
+      "comment filtrer",
+      "utiliser les filtres"
+    ],
+    "answer": "Les filtres du Portrait de la Petite Enfance sont « Intercommunalité », « Commune » et « RPE ». Leur présence dépend de l’onglet consulté : certaines cartes proposent uniquement « Intercommunalité » et « Commune », tandis que d’autres disposent également du filtre « RPE ».\n\nPour filtrer :\n1. Ouvrez l’onglet souhaité.\n2. Repérez les filtres affichés sur cette carte.\n3. Sélectionnez une intercommunalité, une commune ou un RPE, selon les choix disponibles.\n4. Pour retrouver tous les résultats, effacez ou réinitialisez les sélections.\n\nNe cherchez pas un filtre RPE sur les cartes où il n’est pas proposé."
+  },
+  {
+    "title": "Afficher les couches",
+    "keys": [
+      "couche",
+      "couches",
+      "afficher",
+      "masquer",
+      "activer",
+      "desactiver",
+      "visibilite",
+      "superposer"
+    ],
+    "answer": "Dans une carte, ouvrez le panneau « Couches » s’il existe. Activez ou désactivez les données que vous voulez voir, par exemple une couche de structures ou une limite territoriale lorsque celles-ci sont proposées. Certaines couches peuvent rester visibles sans commande individuelle. Consultez ensuite la légende."
+  },
+  {
+    "title": "Table attributaire",
+    "keys": [
+      "attribut",
+      "attributaire",
+      "table",
+      "tableau",
+      "champs",
+      "colonnes",
+      "enregistrement",
+      "donnees"
+    ],
+    "answer": "La table attributaire rassemble les informations associées aux objets représentés. Si la carte dispose d’un bouton « Attributs » ou « Table », ouvrez-le pour examiner les lignes et les colonnes. Vous pouvez aussi cliquer sur un objet de la carte pour afficher sa fiche descriptive."
+  },
+  {
+    "title": "Fiche d’un équipement",
+    "keys": [
+      "cliquer",
+      "clic",
+      "objet",
+      "popup",
+      "fiche",
+      "identifier",
+      "information",
+      "details",
+      "adresse"
+    ],
+    "answer": "Cliquez sur un symbole (RPE, MAM, crèche ou autre structure) pour ouvrir sa fiche si une fenêtre d’information est configurée. Vous pourrez y lire les champs publiés pour cet équipement. Si plusieurs objets sont superposés, naviguez entre les fiches lorsqu’un contrôle le permet. Les coordonnées et horaires ne sont pas forcément renseignés."
+  },
+  {
+    "title": "Légende et symboles",
+    "keys": [
+      "legende",
+      "symbole",
+      "couleur",
+      "signification",
+      "representation",
+      "point",
+      "polygone"
+    ],
+    "answer": "La légende explique les couleurs, figurés et catégories de chaque carte. Utilisez l’outil « Légende » s’il est disponible. Les symboles des structures d’accueil et les couleurs des indicateurs sont propres à la vue ouverte : vérifiez-les avant toute interprétation."
+  },
+  {
+    "title": "Naviguer dans la carte",
+    "keys": [
+      "zoom",
+      "zoomer",
+      "deplacer",
+      "navigation",
+      "recentrer",
+      "etendue",
+      "position",
+      "carte"
+    ],
+    "answer": "Utilisez la molette ou les boutons + / − pour zoomer, puis faites glisser la carte pour vous déplacer. Sur mobile, zoomez avec deux doigts. Si un bouton d’étendue initiale est proposé, utilisez-le pour retrouver la vue de départ."
+  },
+  {
+    "title": "Relais Petite Enfance (RPE)",
+    "keys": [
+      "relais petite enfance",
+      "rpe",
+      "relais"
+    ],
+    "answer": "Pour consulter les Relais Petite Enfance (RPE), ouvrez la carte ou la thématique correspondante. Repérez les lieux représentés, puis cliquez sur un symbole pour lire les informations disponibles. Le RPE est un service d’information et d’accompagnement des familles et des professionnels de l’accueil du jeune enfant. L’existence de permanences ou de sites d’animation dépend des données affichées."
+  },
+  {
+    "title": "Permanences et animations RPE",
+    "keys": [
+      "permanence",
+      "permanences",
+      "animation",
+      "animations",
+      "atelier",
+      "ateliers"
+    ],
+    "answer": "Les sites d’animation ou de permanence des RPE peuvent être représentés séparément du siège principal. Dans la carte correspondante, consultez la légende et cliquez sur le site souhaité pour identifier les caractéristiques publiées. Pour connaître un calendrier précis ou la disponibilité d’une permanence, référez-vous au contact officiel du service lorsqu’il est indiqué."
+  },
+  {
+    "title": "Maisons d’assistantes maternelles (MAM)",
+    "keys": [
+      "mam",
+      "maison assistantes maternelles",
+      "maisons assistantes"
+    ],
+    "answer": "Dans la thématique MAM, repérez les Maisons d’Assistantes Maternelles sur la carte et cliquez sur un établissement pour voir sa fiche. Une MAM regroupe des assistantes maternelles exerçant dans un lieu commun. La carte indique les structures recensées, sans garantir les places disponibles en temps réel."
+  },
+  {
+    "title": "Assistantes maternelles",
+    "keys": [
+      "assistantes maternelles",
+      "assistante maternelle",
+      "assistants maternels",
+      "nombre assistantes",
+      "nb assistante"
+    ],
+    "answer": "Pour examiner le nombre d’assistantes maternelles, ouvrez l’indicateur ou la carte correspondant. Observez l’unité géographique utilisée, la légende et, si elle existe, l’année de référence. Cliquez sur un territoire pour consulter sa valeur publiée. Un effectif recensé n’est pas équivalent au nombre de places disponibles aujourd’hui."
+  },
+  {
+    "title": "Crèches PSU et PAJE",
+    "keys": [
+      "creche",
+      "creches",
+      "psu",
+      "paje",
+      "micro creche",
+      "eaje"
+    ],
+    "answer": "Le portrait distingue des catégories de crèches, notamment les crèches PSU et PAJE dans les données associées au portail. Ouvrez la carte correspondante, identifiez les établissements avec la légende, puis cliquez sur une structure pour lire ses attributs. PSU et PAJE renvoient à des cadres de financement différents ; une carte d’établissements ne donne pas automatiquement les tarifs ni les disponibilités en temps réel."
+  },
+  {
+    "title": "Lieux d’accueil enfants-parents (LAEP)",
+    "keys": [
+      "laep",
+      "lieux accueil enfants parents",
+      "lieu accueil enfants parents",
+      "parentalite",
+      "parents"
+    ],
+    "answer": "Pour consulter les LAEP (Lieux d’Accueil Enfants-Parents), ouvrez la thématique dédiée. Ces lieux favorisent les rencontres et les échanges entre enfants et parents. Cliquez sur un lieu pour consulter les renseignements affichés. Les horaires et modalités d’accueil doivent être confirmés auprès du service concerné s’ils ne sont pas indiqués."
+  },
+  {
+    "title": "Naissances",
+    "keys": [
+      "naissance",
+      "naissances",
+      "nouveaux nes",
+      "natalite"
+    ],
+    "answer": "L’indicateur « Nombre de naissances » décrit les naissances recensées sur le territoire et la période indiqués dans la carte. Consultez la légende, l’année et l’échelle géographique avant de comparer plusieurs communes. Si une sélection temporelle est disponible, choisissez la période voulue ; sinon, utilisez l’année affichée."
+  },
+  {
+    "title": "Taux de couverture et adéquation",
+    "keys": [
+      "taux couverture",
+      "couverture",
+      "adequation",
+      "offre",
+      "besoins",
+      "capacite",
+      "demande"
+    ],
+    "answer": "Le taux de couverture / indicateur d’adéquation de l’offre vise à mettre en regard l’offre d’accueil et les besoins sur un territoire. Ouvrez la carte de cet indicateur, lisez l’unité et la définition présentées, puis consultez la légende. Un taux plus élevé ou plus faible ne suffit pas, à lui seul, à mesurer la disponibilité effective d’une place pour une famille."
+  },
+  {
+    "title": "Comparer plusieurs territoires",
+    "keys": [
+      "comparer",
+      "comparaison",
+      "difference",
+      "plusieurs territoires",
+      "deux communes"
+    ],
+    "answer": "Pour comparer des territoires, ouvrez la même thématique et utilisez successivement les filtres « Intercommunalité » ou « Commune » disponibles. Relevez les valeurs dans la carte ou les fiches. Si l’onglet propose aussi « RPE », vous pouvez sélectionner un relais pour examiner ses données. Vérifiez que les sélections précédentes ont été effacées avant de comparer."
+  },
+  {
+    "title": "Télécharger ou exporter",
+    "keys": [
+      "export",
+      "exporter",
+      "telecharger",
+      "telechargement",
+      "csv",
+      "excel",
+      "pdf",
+      "imprimer",
+      "impression"
+    ],
+    "answer": "Si une carte propose « Exporter », « Télécharger », « Imprimer » ou un lien vers un document, utilisez cette commande et choisissez le format disponible. Tous les jeux de données ne permettent pas nécessairement l’export. L’absence de bouton signifie que cette fonction n’est pas proposée dans cette vue."
+  },
+  {
+    "title": "Réinitialiser une vue",
+    "keys": [
+      "reinitialiser",
+      "retablir",
+      "effacer",
+      "supprimer filtre",
+      "tout afficher",
+      "aucun resultat",
+      "zero"
+    ],
+    "answer": "Pour revenir à la vue générale, effacez les sélections dans les filtres présents sur l’onglet (« Intercommunalité », « Commune » et, si disponible, « RPE »). Vérifiez également les couches actives et revenez à l’étendue initiale si la carte propose cette commande."
+  },
+  {
+    "title": "Problème de chargement",
+    "keys": [
+      "erreur",
+      "bug",
+      "vide",
+      "blanc",
+      "charge",
+      "chargement",
+      "probleme",
+      "fonctionne",
+      "lent",
+      "impossible"
+    ],
+    "answer": "Si une carte n’affiche rien :\n1. Vérifiez les filtres actifs.\n2. Vérifiez les couches visibles et l’étendue.\n3. Rechargez la page.\n4. Vérifiez votre connexion.\n5. Si le problème persiste, notez la thématique et le message d’erreur, puis contactez L’Agence."
+  },
+  {
+    "title": "Utilisation sur mobile",
+    "keys": [
+      "mobile",
+      "telephone",
+      "smartphone",
+      "tablette",
+      "tactile"
+    ],
+    "answer": "Sur téléphone, les panneaux de couches, filtres et légende peuvent être repliés. Ouvrez-les un par un pour libérer l’espace de la carte, et utilisez deux doigts pour zoomer. Une consultation sur ordinateur facilite la lecture des tableaux volumineux."
+  },
+  {
+    "title": "Contacter l’Agence",
+    "keys": [
+      "contacter",
+      "contact",
+      "agence",
+      "mail",
+      "email",
+      "signaler",
+      "question"
+    ],
+    "answer": "Pour une question sur l’origine des données, une erreur ou une demande d’information complémentaire, utilisez les coordonnées et le formulaire de contact publiés sur le site de L’Agence du Pays de Saint-Omer : https://www.aud-stomer.fr/. Pour une place disponible ou une inscription en crèche, contactez directement la structure ou le service compétent."
+  }
+];
+const quick=["Utiliser les filtres", "Afficher les couches", "Table attributaire"];
+const messages=document.getElementById('messages'),quickNav=document.getElementById('quick'),input=document.getElementById('question');
+function norm(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
+function addMessage(s,kind){const div=document.createElement('div');div.className='msg '+kind;div.textContent=s;messages.appendChild(div);messages.scrollTop=messages.scrollHeight}
+function respond(q){
+ const s=norm(q),words=s.split(' ');
+ if(/(filtr|selection|choisir)/.test(s) && /(rpe|commune|intercommunalite|territoire)/.test(s)){return FAQ.find(e=>e.title==='Utiliser les filtres').answer;}let best=null,max=0;
+ for(const e of FAQ){let score=0,t=norm(e.title);
+  if(s===t)score+=40;else if(s.includes(t)&&t.length>7)score+=12;
+  for(const k0 of e.keys){const k=norm(k0);
+    if(s===k)score+=30;
+    else if(k.includes(' ')&&s.includes(k))score+=14+k.length/10;
+    else if(words.includes(k))score+=k.length>=5?5:3;
+    else if(k.length>=7&&s.includes(k))score+=3;
+  }
+  if(score>max){best=e;max=score}
+ }
+ return max>=3?best.answer:'Je peux vous aider à utiliser les filtres, les couches, les attributs et la légende, ou à consulter les thèmes RPE, MAM, crèches, assistantes maternelles, LAEP, naissances et taux de couverture. Décrivez votre question ou choisissez une suggestion.';
+}
+function ask(q){q=q.trim();if(!q)return;addMessage(q,'user');addMessage(respond(q),'bot')}
+for(const q of quick){const b=document.createElement('button');b.type='button';b.textContent=q;b.addEventListener('click',()=>ask(q));quickNav.appendChild(b)}
+document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const q=input.value;input.value='';input.style.height='auto';ask(q);input.focus()});
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('form').requestSubmit()}});
+input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,110)+'px'});
+function intro(){addMessage('Bonjour 👋 Je suis l’assistant du Portrait interactif de la Petite Enfance de L’Agence. Je peux vous guider dans l’utilisation des cartes, des couches, des filtres disponibles, de la légende et des tables attributaires.\n\nComment puis-je vous aider ?','bot')}
+document.getElementById('reset').addEventListener('click',()=>{messages.replaceChildren();input.value='';intro();input.focus()});
+intro();
+</script>
+</body>
+</html>
